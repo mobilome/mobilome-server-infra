@@ -1,0 +1,18 @@
+{
+    "zfs_servers": [
+        {
+            "name": "apool",
+            "host": "192.168.0.1",
+            "user": "root",
+            "password": "your_password_here",
+            "dataset": "apool/apool"
+        },
+        {
+            "name": "bpool",
+            "host": "192.168.0.2",
+            "user": "root",
+            "password": "your_password_here",
+            "dataset": "bpool/bpool"
+        }
+    ]
+}

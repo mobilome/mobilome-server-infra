@@ -1,0 +1,933 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mobilome User Disk Usage</title>
+    <link href="css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #3498db;
+            --warning-color: #f39c12;
+            --danger-color: #e74c3c;
+            --success-color: #2ecc71;
+            --apool-color: #3498db;
+            --bpool-color: #2ecc71;
+            --cpool-color: #9b59b6;
+            --nvmepool-color: #e74c3c;
+        }
+        
+        body {
+            background-color: #f8f9fa;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            padding-top: 20px;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #1a3a5f, #2c3e50);
+            color: white;
+            padding: 1.5rem 0;
+            margin-bottom: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .card {
+            border: none;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            margin-bottom: 1.5rem;
+            transition: transform 0.2s ease;
+        }
+        
+        .card:hover {
+            transform: translateY(-2px);
+        }
+        
+        .card-header {
+            background-color: white;
+            border-bottom: 1px solid #eaeaea;
+            font-weight: 600;
+            padding: 1rem 1.25rem;
+            border-radius: 10px 10px 0 0 !important;
+        }
+        
+        .usage-bar {
+            height: 8px;
+            border-radius: 4px;
+            background-color: #e9ecef;
+            overflow: hidden;
+            width: 100%;
+        }
+        
+        .usage-fill {
+            height: 100%;
+            border-radius: 4px;
+        }
+        
+        .pool-usage-bar {
+            height: 12px;
+            border-radius: 6px;
+            background-color: #e9ecef;
+            overflow: hidden;
+            margin: 0.5rem 0;
+        }
+        
+        .pool-usage-fill {
+            height: 100%;
+            border-radius: 6px;
+            transition: width 0.5s ease;
+        }
+        
+        .pool-badge {
+            color: white;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        
+        .nvmepool-badge {
+            background-color: var(--nvmepool-color);
+        }
+        
+        .apool-badge {
+            background-color: var(--apool-color);
+        }
+        
+        .bpool-badge {
+            background-color: var(--bpool-color);
+        }
+        
+        .cpool-badge {
+            background-color: var(--cpool-color);
+        }
+        
+        .table {
+            margin-bottom: 0;
+        }
+        
+        .table th {
+            border-top: none;
+            font-weight: 600;
+            color: #6c757d;
+            background-color: #f8f9fa;
+            font-size: 0.875rem;
+            padding: 0.75rem 0.5rem;
+            text-align: center;
+            vertical-align: middle;
+        }
+        
+        .table td {
+            padding: 0.75rem 0.5rem;
+            vertical-align: middle;
+            text-align: center;
+        }
+        
+        .user-cell {
+            text-align: left;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+        
+        .size-cell {
+            font-family: 'Courier New', monospace;
+            font-weight: 600;
+            font-size: 1.0rem;
+        }
+        
+        .progress-cell {
+            min-width: 120px;
+        }
+        
+        .pool-tabs .nav-link {
+            border: none;
+            border-radius: 8px 8px 0 0;
+            margin-right: 4px;
+            font-weight: 600;
+            color: #6c757d;
+            padding: 0.75rem 1rem;
+        }
+        
+        .pool-tabs .nav-link.active {
+            background-color: white;
+            border-bottom: 3px solid var(--primary-color);
+            color: #1a3a5f;
+        }
+        
+        .pool-tabs .nav-link:hover {
+            background-color: #f8f9fa;
+        }
+        
+        .stats-card {
+            text-align: center;
+            border-left: 4px solid;
+        }
+        
+        .nvmepool-stats {
+            border-left-color: var(--nvmepool-color);
+        }
+        
+        .apool-stats {
+            border-left-color: var(--apool-color);
+        }
+        
+        .bpool-stats {
+            border-left-color: var(--bpool-color);
+        }
+        
+        .cpool-stats {
+            border-left-color: var(--cpool-color);
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 3rem;
+        }
+        
+        .spinner {
+            width: 2rem;
+            height: 2rem;
+        }
+        
+        .user-row:hover {
+            background-color: #f8f9fa;
+        }
+        
+        .quota-badge {
+            font-size: 0.8rem;
+            padding: 0.2rem 0.4rem;
+        }
+        
+        .object-count {
+            font-family: 'Courier New', monospace;
+            font-size: 1.0rem;
+        }
+        
+        .tab-pane {
+            background-color: white;
+            border-radius: 0 0 10px 10px;
+        }
+        
+        .pool-space-info {
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+        
+        .space-stats {
+            font-size: 0.9rem;
+        }
+        
+        .space-number {
+            font-weight: 700;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .used-space {
+            color: #e74c3c !important;
+        }
+        
+        .free-space {
+            color: #27ae60;
+        }
+        
+        .total-space {
+            color: #3498db;
+        }
+        
+        .progress-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 40px;
+        }
+        
+        .progress-label {
+            font-size: 0.8rem;
+            color: #6c757d;
+            font-weight: 600;
+            text-align: center;
+            margin-bottom: 6px;
+            line-height: 1;
+        }
+        
+        .user-pool-percent-bar {
+            height: 8px;
+            border-radius: 4px;
+            background-color: #e9ecef;
+            overflow: hidden;
+            width: 100%;
+        }
+        
+        .user-pool-percent-fill {
+            height: 100%;
+            border-radius: 4px;
+            background: linear-gradient(90deg, #3498db, #2980b9);
+        }
+        
+        .quota-progress-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 40px;
+        }
+        
+        .quota-label {
+            font-size: 0.8rem;
+            color: #6c757d;
+            font-weight: 600;
+            text-align: center;
+            margin-bottom: 6px;
+            line-height: 1;
+        }
+        
+        .no-quota-text {
+            font-size: 0.8rem;
+            color: #6c757d;
+            text-align: center;
+            font-style: italic;
+        }
+        
+        /* 表格列宽设置 */
+        .table th:nth-child(1),
+        .table td:nth-child(1) {
+            width: 15%; /* 用户列 */
+            text-align: left;
+            padding-left: 1rem;
+        }
+        
+        .table th:nth-child(2),
+        .table td:nth-child(2) {
+            width: 12%; /* 已用空间列 */
+        }
+        
+        .table th:nth-child(3),
+        .table td:nth-child(3) {
+            width: 12%; /* 空间配额列 */
+        }
+        
+        .table th:nth-child(4),
+        .table td:nth-child(4) {
+            width: 12%; /* 文件数量列 */
+        }
+        
+        .table th:nth-child(5),
+        .table td:nth-child(5) {
+            width: 12%; /* 文件配额列 */
+        }
+        
+        .table th:nth-child(6),
+        .table td:nth-child(6) {
+            width: 17%; /* 存储池占比列 */
+        }
+        
+        .table th:nth-child(7),
+        .table td:nth-child(7) {
+            width: 20%; /* 配额使用率列 */
+        }
+        
+        @media (max-width: 768px) {
+            .card {
+                margin-bottom: 1rem;
+            }
+            
+            .table-responsive {
+                font-size: 0.75rem;
+            }
+            
+            .progress-cell {
+                min-width: 100px;
+            }
+            
+            .pool-tabs .nav-link {
+                padding: 0.5rem 0.75rem;
+                font-size: 0.875rem;
+            }
+            
+            .pool-space-info {
+                padding: 0.75rem;
+            }
+            
+            .space-stats {
+                font-size: 0.8rem;
+            }
+            
+            .progress-label,
+            .quota-label,
+            .no-quota-text {
+                font-size: 0.7rem;
+            }
+            
+            /* 移动端表格列宽调整 */
+            .table th:nth-child(1),
+            .table td:nth-child(1) {
+                width: 20%;
+                padding-left: 0.5rem;
+            }
+            
+            .table th:nth-child(2),
+            .table td:nth-child(2) {
+                width: 15%;
+            }
+            
+            .table th:nth-child(3),
+            .table td:nth-child(3) {
+                width: 15%;
+            }
+            
+            .table th:nth-child(4),
+            .table td:nth-child(4) {
+                width: 15%;
+            }
+            
+            .table th:nth-child(5),
+            .table td:nth-child(5) {
+                width: 15%;
+            }
+            
+            .table th:nth-child(6),
+            .table td:nth-child(6) {
+                width: 20%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 页面标题 -->
+        <div class="header">
+            <div class="container">
+                <div class="row align-items-center">
+                    <div class="col-md-12 text-center">
+                        <h1 class="h3 mb-1">MobilomeServer 存储使用情况</h1>
+                        <p class="mb-0 opacity-75">实时监控多个存储池的用户空间使用情况</p>
+                    </div>
+<!--                     <div class="col-md-4 text-md-end">
+                        <button class="btn btn-sm btn-light" onclick="refreshData()">
+                            <span class="spinner-border spinner-border-sm d-none" id="refreshSpinner"></span>
+                            刷新数据
+                        </button>
+                    </div> -->
+                </div>
+            </div>
+        </div>
+
+        <!-- 存储池统计概览 -->
+        <div class="row mb-4" id="poolStats">
+            <div class="loading">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">加载中...</span>
+                </div>
+                <p class="mt-2">正在获取存储池数据...</p>
+            </div>
+        </div>
+
+        <!-- 存储池标签页 -->
+        <div class="card">
+            <div class="card-header">
+                <ul class="nav nav-tabs pool-tabs card-header-tabs" id="poolTabs" role="tablist">
+                    <!-- 标签页将通过JavaScript动态生成 -->
+                </ul>
+            </div>
+            <div class="card-body p-0">
+                <div class="tab-content" id="poolTabContent">
+                    <!-- 标签页内容将通过JavaScript动态生成 -->
+                </div>
+            </div>
+        </div>
+        
+        <!-- 数据更新时间 -->
+        <div class="text-center mt-4 text-muted small">
+            数据最后更新时间: <span id="lastUpdateTime">-</span>
+        </div>
+    </div>
+
+    <!-- 引入Bootstrap JS -->
+    <script src="js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        // API端点
+        const API_URL = 'http://192.168.27.3:19998/user_disk_usage';
+        
+        // 存储池颜色映射
+        const poolColors = {
+            'apool': { primary: '#3498db', light: '#ebf5fb' },
+            'bpool': { primary: '#2ecc71', light: '#eafaf1' },
+            'cpool': { primary: '#9b59b6', light: '#f4ecf7' },
+            'nvmepool': { primary: '#e74c3c', light: '#fdedec' }
+        };
+
+        // 存储池总空间配置（根据实际情况调整）
+        const poolTotalSpace = {
+            'nvmepool': '7.5T',
+            'apool': '145T',
+            'bpool': '305T',
+            'cpool': '163T'
+        };
+
+        // 全局数据存储
+        let poolData = [];
+
+        // 将大小字符串转换为字节数
+        function parseSize(sizeStr) {
+            if (!sizeStr || sizeStr === 'none') return 0;
+            
+            const units = {
+                'B': 1,
+                'K': 1024,
+                'M': 1024 * 1024,
+                'G': 1024 * 1024 * 1024,
+                'T': 1024 * 1024 * 1024 * 1024
+            };
+            
+            const match = sizeStr.match(/^([\d.]+)([BKMGT]?)$/);
+            if (!match) return 0;
+            
+            const value = parseFloat(match[1]);
+            const unit = match[2] || 'B';
+            
+            return value * (units[unit] || 1);
+        }
+
+        // 格式化大小为易读格式
+        function formatSize(bytes) {
+            if (bytes === 0) return '0 B';
+            
+            const units = ['B', 'K', 'M', 'G', 'T'];
+            let unitIndex = 0;
+            let size = bytes;
+            
+            while (size >= 1024 && unitIndex < units.length - 1) {
+                size /= 1024;
+                unitIndex++;
+            }
+            
+            return `${size.toFixed(unitIndex === 0 ? 0 : 1)}${units[unitIndex]}`;
+        }
+
+        // 从API获取数据
+        async function fetchData() {
+            try {
+                const response = await fetch(API_URL);
+                if (!response.ok) {
+                    throw new Error(`HTTP错误! 状态: ${response.status}`);
+                }
+                return await response.json();
+            } catch (error) {
+                console.error('获取数据失败:', error);
+                throw error;
+            }
+        }
+
+        // 计算存储池统计信息
+        function calculatePoolStats(pools) {
+            return pools.map(pool => {
+                const poolName = pool.server;
+                const totalSpaceBytes = parseSize(poolTotalSpace[poolName] || '0T');
+                const totalUsed = pool.users.reduce((sum, user) => sum + parseSize(user.used), 0);
+                const totalObjects = pool.users.reduce((sum, user) => sum + parseSize(user.objused), 0);
+                const freeSpace = totalSpaceBytes - totalUsed;
+                const usagePercent = totalSpaceBytes > 0 ? (totalUsed / totalSpaceBytes * 100) : 0;
+                const userCount = pool.users.length;
+                
+                // 计算每个用户占存储池总空间的百分比
+                const usersWithPoolPercent = pool.users.map(user => {
+                    const userUsedBytes = parseSize(user.used);
+                    const userPoolPercent = totalSpaceBytes > 0 ? (userUsedBytes / totalSpaceBytes * 100) : 0;
+                    return {
+                        ...user,
+                        userPoolPercent: userPoolPercent.toFixed(2)
+                    };
+                });
+                
+                // 找出使用空间最多的用户
+                const topUser = pool.users.reduce((max, user) => 
+                    parseSize(user.used) > parseSize(max.used) ? user : max
+                , pool.users[0]);
+                
+                // 计算有配额限制的用户数量
+                const usersWithQuota = pool.users.filter(user => user.quota !== 'none').length;
+                
+                return {
+                    ...pool,
+                    users: usersWithPoolPercent,
+                    totalSpaceBytes,
+                    totalSpaceFormatted: formatSize(totalSpaceBytes),
+                    totalUsed,
+                    totalUsedFormatted: formatSize(totalUsed),
+                    freeSpace,
+                    freeSpaceFormatted: formatSize(freeSpace),
+                    usagePercent: usagePercent.toFixed(1),
+                    totalObjects,
+                    totalObjectsFormatted: formatSize(totalObjects),
+                    userCount,
+                    topUser,
+                    usersWithQuota
+                };
+            });
+        }
+
+        // 更新存储池统计概览
+        function updatePoolStats(poolsWithStats) {
+            const statsHTML = poolsWithStats.map(pool => {
+                const poolName = pool.server;
+                const color = poolColors[poolName] || poolColors.apool;
+                const usageClass = pool.usagePercent > 85 ? 'text-danger' : pool.usagePercent > 70 ? 'text-warning' : 'text-success';
+                
+                return `
+                    <div class="col-md-3">
+                        <div class="card stats-card ${poolName}-stats">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <h5 class="card-title text-muted mb-0">home/${pool.server}</h5>
+                                    <span class="pool-badge ${poolName}-badge">${pool.server}</span>
+                                </div>
+                                <h2 class="mb-1" style="color: ${color.primary}">${pool.totalUsedFormatted}</h2>
+                                <p class="text-muted small mb-1">已使用 / ${pool.totalSpaceFormatted}</p>
+                                
+                                <!-- 存储池使用进度条 -->
+                                <div class="pool-usage-bar">
+                                    <div class="pool-usage-fill" style="width: ${pool.usagePercent}%; background-color: ${color.primary};"></div>
+                                </div>
+                                
+                                <div class="d-flex justify-content-between space-stats">
+                                    <div>
+                                        <div class="text-muted small">已使用</div>
+                                        <div class="space-number used-space">${pool.usagePercent}%</div>
+                                    </div>
+                                    <div>
+                                        <div class="text-muted small">剩余空间</div>
+                                        <div class="space-number free-space">${pool.freeSpaceFormatted}</div>
+                                    </div>
+                                </div>
+                                
+                                <div class="d-flex justify-content-between text-muted small mt-2">
+                                    <span>${pool.userCount} 用户</span>
+                                    <span>${pool.usersWithQuota} 有配额</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            
+            document.getElementById('poolStats').innerHTML = statsHTML;
+        }
+
+        // 生成存储池标签页
+        function generatePoolTabs(pools) {
+            const tabsContainer = document.getElementById('poolTabs');
+            const contentContainer = document.getElementById('poolTabContent');
+            
+            let tabsHTML = '';
+            let contentHTML = '';
+            
+            pools.forEach((pool, index) => {
+                const poolName = pool.server;
+                const isActive = index === 0 ? 'active' : '';
+                const showActive = index === 0 ? 'show active' : '';
+                const color = poolColors[poolName] || poolColors.apool;
+                const usageClass = pool.usagePercent > 85 ? 'text-danger' : pool.usagePercent > 70 ? 'text-warning' : 'text-success';
+                
+                // 生成标签页
+                tabsHTML += `
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link ${isActive}" id="${poolName}-tab" data-bs-toggle="tab" 
+                                data-bs-target="#${poolName}" type="button" role="tab" 
+                                aria-controls="${poolName}" aria-selected="${index === 0}">
+                            home/${pool.server}
+                            <span class="badge bg-light text-dark ms-1">${pool.users.length}</span>
+                        </button>
+                    </li>
+                `;
+                
+                // 生成标签页内容
+                contentHTML += `
+                    <div class="tab-pane fade ${showActive}" id="${poolName}" role="tabpanel" 
+                         aria-labelledby="${poolName}-tab">
+                        <div class="p-3">
+                            <!-- 存储池空间信息 -->
+                            <div class="pool-space-info">
+                                <div class="row align-items-center">
+                                    <div class="col-md-6">
+                                        <h6 class="mb-2">存储池空间使用情况</h6>
+                                        <div class="d-flex justify-content-between space-stats">
+                                            <div>
+                                                <div class="text-muted small">总空间</div>
+                                                <div class="space-number total-space">${pool.totalSpaceFormatted}</div>
+                                            </div>
+                                            <div>
+                                                <div class="text-muted small">已使用</div>
+                                                <div class="space-number used-space">${pool.totalUsedFormatted}</div>
+                                            </div>
+                                            <div>
+                                                <div class="text-muted small">剩余空间</div>
+                                                <div class="space-number free-space">${pool.freeSpaceFormatted}</div>
+                                            </div>
+                                            <div>
+                                                <div class="text-muted small">使用率</div>
+                                                <div class="space-number ${usageClass}">${pool.usagePercent}%</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="pool-usage-bar">
+                                            <div class="pool-usage-fill" style="width: ${pool.usagePercent}%; background-color: ${color.primary};"></div>
+                                        </div>
+                                        <div class="d-flex justify-content-between text-muted small mt-1">
+                                            <span>0%</span>
+                                            <span>${pool.usagePercent}% 已使用</span>
+                                            <span>100%</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h6 class="mb-0">用户空间使用详情</h6>
+                                <div class="d-flex">
+                                    <input type="text" class="form-control form-control-sm me-2" 
+                                           placeholder="搜索用户..." id="search${poolName}">
+                                    <select class="form-select form-select-sm" style="width: auto;" id="sort${poolName}">
+                                        <option value="used">按使用空间排序</option>
+                                        <option value="name">按用户名排序</option>
+                                        <option value="objused">按文件数量排序</option>
+                                        <option value="poolPercent">按存储池占比排序</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="table-responsive">
+                                <table class="table table-sm table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>用户</th>
+                                            <th>已用空间</th>
+                                            <th>空间配额</th>
+                                            <th>文件数量</th>
+                                            <th>文件配额</th>
+                                            <th>存储池占比</th>
+                                            <th>配额使用率</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="${poolName}TableBody">
+                                        ${generateUserTable(pool.users, pool.totalSpaceBytes)}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            tabsContainer.innerHTML = tabsHTML;
+            contentContainer.innerHTML = contentHTML;
+            
+            // 设置搜索和排序功能
+            pools.forEach(pool => {
+                const poolName = pool.server;
+                setupSearchAndSort(poolName, pool.users, pool.totalSpaceBytes);
+            });
+        }
+
+        // 生成用户表格
+        function generateUserTable(users, totalSpaceBytes, sortBy = 'used') {
+            // 排序用户数据
+            const sortedUsers = [...users].sort((a, b) => {
+                if (sortBy === 'name') {
+                    return a.user.localeCompare(b.user);
+                } else if (sortBy === 'objused') {
+                    return parseSize(b.objused) - parseSize(a.objused);
+                } else if (sortBy === 'poolPercent') {
+                    return parseFloat(b.userPoolPercent) - parseFloat(a.userPoolPercent);
+                } else { // 默认按使用空间排序
+                    return parseSize(b.used) - parseSize(a.used);
+                }
+            });
+            
+            return sortedUsers.map(user => {
+                const usedBytes = parseSize(user.used);
+                const quotaBytes = parseSize(user.quota);
+                const objUsed = parseSize(user.objused);
+                const objQuota = parseSize(user.objquota);
+                const userPoolPercent = parseFloat(user.userPoolPercent);
+                
+                // 计算使用率（如果有配额）
+                let usagePercent = 0;
+                let usageDisplay = '无配额';
+                let usageClass = 'bg-secondary';
+                
+                if (quotaBytes > 0) {
+                    usagePercent = Math.min(100, (usedBytes / quotaBytes) * 100);
+                    usageDisplay = `${usagePercent.toFixed(1)}%`;
+                    
+                    if (usagePercent > 85) {
+                        usageClass = 'bg-danger';
+                    } else if (usagePercent > 70) {
+                        usageClass = 'bg-warning';
+                    } else {
+                        usageClass = 'bg-success';
+                    }
+                }
+                
+                // 计算文件使用率
+                let objUsagePercent = 0;
+                let objUsageDisplay = '无限制';
+                
+                if (objQuota > 0) {
+                    objUsagePercent = Math.min(100, (objUsed / objQuota) * 100);
+                    objUsageDisplay = `${objUsagePercent.toFixed(1)}%`;
+                }
+                
+                return `
+                    <tr class="user-row">
+                        <td class="user-cell">${user.user}</td>
+                        <td class="size-cell fw-bold used-space">${user.used}</td>
+                        <td class="size-cell">
+                            ${user.quota === 'none' ? 
+                                '<span class="badge bg-success quota-badge">无限制</span>' : 
+                                `<span class="text-muted">${user.quota}</span>`
+                            }
+                        </td>
+                        <td class="object-count fw-bold used-space">${user.objused}</td>
+                        <td class="size-cell">
+                            ${user.objquota === 'none' ? 
+                                '<span class="badge bg-success quota-badge">无限制</span>' : 
+                                `<span class="text-muted">${user.objquota}</span>`
+                            }
+                        </td>
+                        <td>
+                            <div class="progress-container">
+                                <div class="progress-label">${userPoolPercent.toFixed(2)}%</div>
+                                <div class="user-pool-percent-bar">
+                                    <div class="user-pool-percent-fill" style="width: ${Math.min(userPoolPercent, 100)}%"></div>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            ${quotaBytes > 0 ? `
+                                <div class="quota-progress-container">
+                                    <div class="quota-label">${usageDisplay}</div>
+                                    <div class="usage-bar">
+                                        <div class="usage-fill ${usageClass}" style="width: ${usagePercent}%"></div>
+                                    </div>
+                                </div>
+                            ` : `
+                                <div class="quota-progress-container">
+                                    <div class="no-quota-text">无配额限制</div>
+                                </div>
+                            `}
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // 设置搜索和排序功能
+        function setupSearchAndSort(poolName, users, totalSpaceBytes) {
+            const searchInput = document.getElementById(`search${poolName}`);
+            const sortSelect = document.getElementById(`sort${poolName}`);
+            const tableBody = document.getElementById(`${poolName}TableBody`);
+            
+            if (searchInput && tableBody) {
+                searchInput.addEventListener('input', function(e) {
+                    const searchTerm = e.target.value.toLowerCase();
+                    const filteredUsers = users.filter(user => 
+                        user.user.toLowerCase().includes(searchTerm)
+                    );
+                    const currentSort = sortSelect.value;
+                    tableBody.innerHTML = generateUserTable(filteredUsers, totalSpaceBytes, currentSort);
+                });
+            }
+            
+            if (sortSelect && tableBody) {
+                sortSelect.addEventListener('change', function(e) {
+                    const searchTerm = searchInput.value.toLowerCase();
+                    const filteredUsers = users.filter(user => 
+                        user.user.toLowerCase().includes(searchTerm)
+                    );
+                    tableBody.innerHTML = generateUserTable(filteredUsers, totalSpaceBytes, e.target.value);
+                });
+            }
+        }
+
+        // 刷新数据
+        async function refreshData() {
+            const refreshBtn = document.querySelector('button[onclick="refreshData()"]');
+            const spinner = document.getElementById('refreshSpinner');
+            
+            refreshBtn.disabled = true;
+            spinner.classList.remove('d-none');
+            
+            try {
+                const data = await fetchData();
+                poolData = data;
+                
+                const poolsWithStats = calculatePoolStats(data);
+                updatePoolStats(poolsWithStats);
+                generatePoolTabs(poolsWithStats);
+                
+                document.getElementById('lastUpdateTime').textContent = new Date().toLocaleString();
+                
+                showToast('数据刷新成功', 'success');
+            } catch (error) {
+                console.error('刷新数据失败:', error);
+                showToast('数据刷新失败: ' + error.message, 'danger');
+            } finally {
+                refreshBtn.disabled = false;
+                spinner.classList.add('d-none');
+            }
+        }
+
+        // 显示提示消息
+        function showToast(message, type = 'info') {
+            const toast = document.createElement('div');
+            toast.className = `position-fixed bottom-0 end-0 p-3`;
+            toast.style.zIndex = '1050';
+            toast.innerHTML = `
+                <div class="toast show align-items-center text-bg-${type} border-0" role="alert">
+                    <div class="d-flex">
+                        <div class="toast-body">${message}</div>
+                        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(toast);
+            
+            setTimeout(() => {
+                if (document.body.contains(toast)) {
+                    document.body.removeChild(toast);
+                }
+            }, 3000);
+        }
+
+        // 初始化页面
+        document.addEventListener('DOMContentLoaded', async function() {
+            try {
+                const data = await fetchData();
+                poolData = data;
+                
+                const poolsWithStats = calculatePoolStats(data);
+                updatePoolStats(poolsWithStats);
+                generatePoolTabs(poolsWithStats);
+                
+                document.getElementById('lastUpdateTime').textContent = new Date().toLocaleString();
+            } catch (error) {
+                document.getElementById('poolStats').innerHTML = `
+                    <div class="col-12">
+                        <div class="alert alert-danger" role="alert">
+                            <h6>无法加载数据</h6>
+                            <p class="mb-0">错误: ${error.message}</p>
+                            <p class="mb-2 small">请检查API端点是否可访问: ${API_URL}</p>
+                            <button class="btn btn-sm btn-outline-danger mt-2" onclick="refreshData()">重试</button>
+                        </div>
+                    </div>
+                `;
+            }
+        });
+    </script>
+</body>
+</html>
