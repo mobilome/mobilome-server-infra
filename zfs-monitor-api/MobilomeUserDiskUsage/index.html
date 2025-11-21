@@ -451,14 +451,14 @@
 
     <script>
         // API端点
-        const API_URL = 'http://192.168.27.3:19998/user_disk_usage';
+        const API_URL = 'http://lan.mobilome.cn/user_disk_usage';
         
         // 存储池颜色映射
         const poolColors = {
-            'apool': { primary: '#3498db', light: '#ebf5fb' },
-            'bpool': { primary: '#2ecc71', light: '#eafaf1' },
-            'cpool': { primary: '#9b59b6', light: '#f4ecf7' },
-            'nvmepool': { primary: '#e74c3c', light: '#fdedec' }
+            'apool': { primary: '#0070cb', light: '#ebf5fb' },
+            'bpool': { primary: '#0070cb', light: '#eafaf1' },
+            'cpool': { primary: '#0070cb', light: '#f4ecf7' },
+            'nvmepool': { primary: '#0070cb', light: '#fdedec' }
         };
 
         // 存储池总空间配置（根据实际情况调整）
@@ -586,8 +586,8 @@
                                     <h5 class="card-title text-muted mb-0">home/${pool.server}</h5>
                                     <span class="pool-badge ${poolName}-badge">${pool.server}</span>
                                 </div>
-                                <h2 class="mb-1" style="color: ${color.primary}">${pool.totalUsedFormatted}</h2>
-                                <p class="text-muted small mb-1">已使用 / ${pool.totalSpaceFormatted}</p>
+                                <h2 class="mb-1" style="color: #27ae60">${pool.freeSpaceFormatted}</h2>
+                                <p class="text-muted small mb-1">可用 / ${pool.totalSpaceFormatted}</p>
                                 
                                 <!-- 存储池使用进度条 -->
                                 <div class="pool-usage-bar">
@@ -596,12 +596,12 @@
                                 
                                 <div class="d-flex justify-content-between space-stats">
                                     <div>
-                                        <div class="text-muted small">已使用</div>
+                                        <div class="text-muted small">已使用百分比</div>
                                         <div class="space-number used-space">${pool.usagePercent}%</div>
                                     </div>
                                     <div>
-                                        <div class="text-muted small">剩余空间</div>
-                                        <div class="space-number free-space">${pool.freeSpaceFormatted}</div>
+                                        <div class="text-muted small">已使用空间</div>
+                                        <div class="space-number used-space">${pool.totalUsedFormatted}</div>
                                     </div>
                                 </div>
                                 

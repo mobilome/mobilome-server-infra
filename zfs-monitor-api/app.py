@@ -16,6 +16,7 @@ ZFS_SERVERS = config.get("zfs_servers", [])
 # ------------------------------
 # SSH 远程执行命令函数
 # ------------------------------
+
 def ssh_run(server):
     host = server["host"]
     user = server["user"]
@@ -23,31 +24,58 @@ def ssh_run(server):
     dataset = server["dataset"]
 
     cmd = f"zfs userspace -H -o name,used,quota,objused,objquota -S used {dataset}"
-    ssh = paramiko.SSHClient()
-    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-    ssh.connect(host, username=user, password=password)
-    stdin, stdout, stderr = ssh.exec_command(cmd)
-    output = stdout.read().decode()
-    ssh.close()
 
-    users = []
-    for line in output.strip().splitlines():
-        parts = line.split("\t")
-        if len(parts) == 5:
-            users.append({
-                "user": parts[0],
-                "used": parts[1],
-                "quota": parts[2],
-                "objused": parts[3],
-                "objquota": parts[4]
-            })
+    try:
+        ssh = paramiko.SSHClient()
+        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 
-    return {
-        "server": server["name"],
-        "host": host,
-        "dataset": dataset,
-        "users": users
-    }
+        ssh.connect(host, username=user, password=password, timeout=5)
+        stdin, stdout, stderr = ssh.exec_command(cmd, timeout=5)
+
+        output = stdout.read().decode()
+        err = stderr.read().decode()
+
+        ssh.close()
+
+        # zfs 输出错误也要返回正常结构，只是 users 空 + error 字段
+        if err.strip():
+            return {
+                "server": server["name"],
+                "host": host,
+                "dataset": dataset,
+                "users": [],
+                "error": err.strip()
+            }
+
+        users = []
+        for line in output.strip().splitlines():
+            parts = line.split("\t")
+            if len(parts) == 5:
+                users.append({
+                    "user": parts[0],
+                    "used": parts[1],
+                    "quota": parts[2],
+                    "objused": parts[3],
+                    "objquota": parts[4]
+                })
+
+        return {
+            "server": server["name"],
+            "host": host,
+            "dataset": dataset,
+            "users": users
+        }
+
+    except Exception as e:
+        # 任何错误都返回同结构 + 空 users
+        return {
+            "server": server["name"],
+            "host": host,
+            "dataset": dataset,
+            "users": [],
+            "error": str(e)
+        }
+
 
 # ------------------------------
 # Flask API
